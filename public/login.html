@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="centered-container">
+    <form class="centered-form" onsubmit="login(event)">
+      <h2>Login</h2>
+      <input type="email" id="email" placeholder="Email" required />
+      <input type="password" id="password" placeholder="Password" required />
+      <button type="submit">Login</button>
+      <button type="button" onclick="register()">Register Instead</button>
+    </form>
+  </div>
+
+  <script>
+    async function login(e) {
+      e.preventDefault();
+      const res = await fetch('/auth/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          email: email.value,
+          password: password.value
+        })
+      });
+      if (res.ok) location.href = '/dashboard.html';
+      else alert('Login failed');
+    }
+
+    async function register() {
+      const email = prompt("Enter Email");
+      const password = prompt("Enter Password");
+      const res = await fetch('/auth/register', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ email, password })
+      });
+      if (res.ok) alert('Registered. Now login.');
+      else alert('Registration failed');
+    }
+  </script>
+</body>
+</html>

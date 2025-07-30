@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .note-card {
+      border: 1px solid #ccc;
+      padding: 12px;
+      margin: 10px;
+      border-radius: 8px;
+      background-color: #f9f9f9;
+    }
+    .expiry-info.expired {
+      color: red;
+    }
+    .note-card button {
+      margin-right: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard-container">
+    <header>
+      <h1>My Notes</h1>
+      <button class="create-btn" onclick="createNote()">+ New Note</button>
+    </header>
+
+    <section>
+      <h2>Your Notes</h2>
+      <div id="notes" class="note-list"></div>
+    </section>
+
+    <section>
+      <h2>Shared With Me</h2>
+      <div id="sharedNotes" class="note-list"></div>
+    </section>
+  </div>
+
+  <script>
+    async function loadNotes() {
+      const res = await fetch('/notes/my-notes');
+      const notes = await res.json();
+      const container = document.getElementById('notes');
+      container.innerHTML = '';
+
+      notes.forEach(note => {
+        const div = document.createElement('div');
+        div.className = 'note-card';
+
+        let countdownHTML = '';
+        if (note.expiry) {
+          const daysLeft = Math.ceil((new Date(note.expiry) - new Date()) / (1000 * 60 * 60 * 24));
+          countdownHTML = daysLeft >= 0
+            ? `<p class="expiry-info">Shared note expiry in: <strong>${daysLeft} day(s)</strong></p>`
+            : `<p class="expiry-info expired">Expired</p>`;
+        }
+
+        div.innerHTML = `
+          <h3>${note.title}</h3>
+          <p>${note.content}</p>
+          ${countdownHTML}
+          <button onclick="share(${note.id})">Share</button>
+          <button onclick="showNoteDetails(${note.id})">View Details</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    async function loadShared() {
+      const res = await fetch('/notes/shared');
+      const notes = await res.json();
+      const container = document.getElementById('sharedNotes');
+      container.innerHTML = '';
+
+      notes.forEach(note => {
+        const div = document.createElement('div');
+        div.className = 'note-card';
+
+        let countdownHTML = '';
+        if (note.expiry) {
+          const daysLeft = Math.ceil((new Date(note.expiry) - new Date()) / (1000 * 60 * 60 * 24));
+          countdownHTML = daysLeft >= 0
+            ? `<p class="expiry-info">Expires in: <strong>${daysLeft} day(s)</strong></p>`
+            : `<p class="expiry-info expired">Expired</p>`;
+        }
+
+        div.innerHTML = `
+          <h3>${note.title}</h3>
+          <p>${note.content}</p>
+          ${countdownHTML}
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    async function createNote() {
+      const title = prompt("Title?");
+      const content = prompt("Content?");
+      if (title && content) {
+        await fetch('/notes/create', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ title, content })
+        });
+        location.reload();
+      }
+    }
+
+    async function share(noteId) {
+      const email = prompt("Share with (email)?");
+      const expiryDays = prompt("Days before expiry? Leave blank for no expiry:");
+      const res = await fetch('/notes/share', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ noteId, email, expiryDays })
+      });
+      if (res.ok) {
+        alert('Invitation sent.');
+      } else {
+        const msg = await res.text();
+        alert('Error: ' + msg);
+      }
+    }
+
+    async function showNoteDetails(noteId) {
+      const res = await fetch(`/notes/${noteId}/shares`);
+      const data = await res.json();
+
+      let message = `Note shared with:\n\n`;
+      if (data.length === 0) {
+        message += 'No one yet.';
+      } else {
+        data.forEach(item => {
+          const username = item.username || 'Unknown';
+
+          const daysLeft = item.expiry
+            ? Math.ceil((new Date(item.expiry) - new Date()) / (1000 * 60 * 60 * 24))
+            : null;
+
+          message += `- ${username}`;
+          if (daysLeft != null) {
+            message += daysLeft >= 0
+              ? ` (expires in ${daysLeft} day(s))`
+              : ` (expired)`;
+          } else {
+            message += ` (no expiry)`;
+          }
+          message += `\n`;
+        });
+      }
+      alert(message);
+    }
+
+    loadNotes();
+    loadShared();
+  </script>
+</body>
+</html>
